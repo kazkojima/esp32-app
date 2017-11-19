@@ -74,6 +74,8 @@ extern int sockfd;
 extern struct ringbuf ubloxbuf;
 extern SemaphoreHandle_t ringbuf_sem;
 extern SemaphoreHandle_t send_sem;
+extern xQueueHandle pkt_queue;
+extern int pkt_queue_error;
 
 static uint8_t cmdbuf[32];
 
@@ -137,10 +139,10 @@ void gps_task(void *pvParameters)
 
         pkt.head = B3HEADER;
         pkt.tos = TOS_GPS;
-        xSemaphoreTake(send_sem, portMAX_DELAY);
-        int n = send(sockfd, &pkt, sizeof(pkt), 0);
-        if (n < 0) {
+
+        if (xQueueSend(pkt_queue, &pkt, 0) != pdTRUE) {
+            //printf("fail to queue GPS packet\n");
+            ++pkt_queue_error;
         }
-        xSemaphoreGive(send_sem);
     }
 }

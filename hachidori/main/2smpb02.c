@@ -229,6 +229,7 @@ static void calculate(int32_t raw_P, int32_t raw_T, uint8_t *pp, uint8_t *tp)
 
 extern int sockfd;
 extern SemaphoreHandle_t send_sem;
+extern xQueueHandle pkt_queue;
 
 void baro_task(void* arg)
 {
@@ -307,10 +308,8 @@ void baro_task(void* arg)
         pkt.head = B3HEADER;
         pkt.tos = TOS_BARO;
        
-        xSemaphoreTake(send_sem, portMAX_DELAY);
-        int n = send(sockfd, &pkt, sizeof(pkt), 0);
-        if (n < 0) {
+        if (xQueueSend(pkt_queue, &pkt, 0) != pdTRUE) {
+            printf("fail to queue Baro packet\n");
         }
-        xSemaphoreGive(send_sem);
     }
 }

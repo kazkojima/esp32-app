@@ -57,8 +57,8 @@ esp_err_t event_handler(void *ctx, system_event_t *event)
     return ESP_OK;
 }
 
-#define UDP_SERVER "192.168.11.1"
-#define UDP_PORT 5790
+#define UDP_SERVER CONFIG_UDP_SERVER_ADDRESS
+#define UDP_PORT CONFIG_UDP_PORT
 
 int sockfd = -1;
 
@@ -67,6 +67,10 @@ SemaphoreHandle_t send_sem;
 SemaphoreHandle_t pwm_sem;
 SemaphoreHandle_t i2c_sem;
 SemaphoreHandle_t nvs_sem;
+
+#define PKT_QSIZE 32
+xQueueHandle pkt_queue = NULL;
+int pkt_queue_error = 0;
 
 #define PARAM_QSIZE 2
 xQueueHandle param_queue = NULL;
@@ -119,6 +123,8 @@ static void udp_task(void *arg)
 
     nvs_handle storage_handle;
     esp_err_t err;
+    bool request_restart = false;
+
     while (true) {
         uint8_t pbuf[B3SIZE];
         union { float f; int32_t i; uint8_t bytes[sizeof(float)];} val;
@@ -143,6 +149,12 @@ static void udp_task(void *arg)
                 err = nvs_erase_key(storage_handle, (const char*)pbuf);
                 if (err == ESP_OK)
                     err = nvs_commit(storage_handle);
+            } else if (pbuf[B3SIZE-1] == 3) {
+                if (0 == strncmp((const char*)pbuf, "#reset", 6)) {
+                    err = ESP_OK;
+                    request_restart = true;
+                } else
+                    err = ESP_ERR_INVALID_ARG;
             } else {
                 // get
                 if (*pbuf == '%')
@@ -162,11 +174,14 @@ static void udp_task(void *arg)
         memcpy(&pkt.data[B3SIZE-6], val.bytes, 4);
         pkt.data[B3SIZE-2] = (err == ESP_OK) ? 0 : 1;
         pkt.data[B3SIZE-1] = pbuf[B3SIZE-1];
-        xSemaphoreTake(send_sem, portMAX_DELAY);
-        int n = send(sockfd, &pkt, sizeof(pkt), 0);
-        if (n < 0) {
+        if (xQueueSend(pkt_queue, &pkt, 0) != pdTRUE) {
+            //printf("fail to queue PARAM packet\n");
+            ++pkt_queue_error;
         }
-        xSemaphoreGive(send_sem);
+        if (request_restart) {
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            esp_restart();
+        }
     }
 }
 
@@ -230,6 +245,11 @@ static void spi_init(void)
 #define I2C_MASTER_RX_BUF_DISABLE       0
 #define I2C_MASTER_FREQ_HZ              400000
 
+#define I2C1_MASTER_SCL_IO              33
+#define I2C1_MASTER_SDA_IO              32
+#define I2C1_MASTER_NUM                 I2C_NUM_1
+#define I2C1_MASTER_FREQ_HZ             400000
+
 static void i2c_init(void)
 {
     int i2c_master_port = I2C_MASTER_NUM;
@@ -240,6 +260,18 @@ static void i2c_init(void)
     conf.scl_io_num = I2C_MASTER_SCL_IO;
     conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
     conf.master.clk_speed = I2C_MASTER_FREQ_HZ;
+    i2c_param_config(i2c_master_port, &conf);
+    i2c_driver_install(i2c_master_port, conf.mode,
+                       I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE,
+                       0);
+
+    i2c_master_port = I2C1_MASTER_NUM;
+    conf.mode = I2C_MODE_MASTER;
+    conf.sda_io_num = I2C1_MASTER_SDA_IO;
+    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;
+    conf.scl_io_num = I2C1_MASTER_SCL_IO;
+    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;
+    conf.master.clk_speed = I2C1_MASTER_FREQ_HZ;
     i2c_param_config(i2c_master_port, &conf);
     i2c_driver_install(i2c_master_port, conf.mode,
                        I2C_MASTER_RX_BUF_DISABLE, I2C_MASTER_TX_BUF_DISABLE,
@@ -262,8 +294,8 @@ static void nvs_init(void)
     ESP_ERROR_CHECK(err);
 }
 
-//#define GPIO_INS_INT	GPIO_NUM_22
-#define GPIO_INS_INT	GPIO_NUM_35
+#define GPIO_INS_INT	GPIO_NUM_22
+//#define GPIO_INS_INT	GPIO_NUM_35
 
 static void xgpio_init(void)
 {
@@ -310,9 +342,9 @@ volatile uint8_t rgb_led_blue;
 extern void baro_task(void *arg);
 extern void baro2_task(void *arg);
 extern void imu_task(void *arg);
-extern void imu_pkt_task(void *arg);
 extern void pwm_task(void *arg);
 extern void bat_task(void *arg);
+extern void pkt_task(void *arg);
 extern void fs_task(void *arg);
 extern void rn_task(void *arg);
 extern void gps_task(void *arg);
@@ -328,8 +360,8 @@ void app_main(void)
     ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
     wifi_config_t sta_config = {
         .sta = {
-            .ssid = "hachidori_ap",
-            .password = "e15f44ecdff3a",
+            .ssid = CONFIG_SSID,
+            .password = CONFIG_SSID_PASSWORD,
             .bssid_set = false
         }
     };
@@ -353,6 +385,9 @@ void app_main(void)
     vSemaphoreCreateBinary(ringbuf_sem);
     ringbuf_init (&ubloxbuf);
 
+    // Sending packet queue
+    pkt_queue = xQueueCreate(PKT_QSIZE, sizeof(struct B3packet));
+
     // INS event queue
     ins_evt_queue = xQueueCreate(INS_EVT_QSIZE, sizeof(uint32_t));
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
@@ -363,9 +398,11 @@ void app_main(void)
 
     xTaskCreate(udp_task, "udp_task", 2048, NULL, 4, NULL);
     xTaskCreate(imu_task, "imu_task", 2048, NULL, 10, NULL);
-    xTaskCreate(imu_pkt_task, "imu_pkt_task", 2048, NULL, 9, NULL);
-    xTaskCreate(baro_task, "baro_task", 2048, NULL, 9, NULL);
-    //xTaskCreate(baro2_task, "baro2_task", 2048, NULL, 9, NULL);
+    xTaskCreate(pkt_task, "pkt_task", 2048, NULL, 9, NULL);
+    if (CONFIG_BARO_MS5611)
+        xTaskCreate(baro2_task, "baro2_task", 2048, NULL, 9, NULL);
+    else
+        xTaskCreate(baro_task, "baro_task", 2048, NULL, 9, NULL);
     xTaskCreate(pwm_task, "pwm_task", 2048, NULL, 8, NULL);
     xTaskCreate(rn_task, "rn_task", 2048, NULL, 7, NULL);
     xTaskCreate(gps_task, "gps_task", 2048, NULL, 6, NULL);
@@ -374,7 +411,7 @@ void app_main(void)
 
 #if 1
     rgb_led_green = 1;
-
+    int last_pkt_queue_error = 0;
     uint8_t red = 0, green = 0, blue = 0;
     while (true) {
         if (red != rgb_led_red) {
@@ -390,6 +427,10 @@ void app_main(void)
             gpio_set_level(GPIO_LED_BLUE, (blue ? RGBLED_ON : RGBLED_OFF));
         }
         vTaskDelay(200 / portTICK_PERIOD_MS);
+        if (pkt_queue_error != last_pkt_queue_error) {
+            printf("pkt error %6d\n", pkt_queue_error);
+            last_pkt_queue_error = pkt_queue_error;
+        }
     }
 #else
     bool green = false;

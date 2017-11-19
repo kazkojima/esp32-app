@@ -1,10 +1,10 @@
 // pwm definitions and globals
 
 // Define when ESC is used
-#define USE_ESC
-//#undef USE_ESC
-#define USE_MCPWM
-//#define USE_LEDC
+//#define USE_ESC
+#undef USE_ESC
+//#define USE_MCPWM
+#define USE_LEDC
 
 #if !defined(USE_MCPWM) && !defined(USE_LEDC)
 #error "no PWM module selected"
@@ -23,8 +23,8 @@
 #define MID_WIDTH 1500
 
 #define NUM_MOTORS 4
-#define MOTOR_ORDER_CW
-//#undef MOTOR_ORDER_CW
+//#define MOTOR_ORDER_CW
+#undef MOTOR_ORDER_CW
 
 #define PWM_STARTUP_COUNT 10
 

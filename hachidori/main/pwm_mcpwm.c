@@ -13,6 +13,7 @@
 #include "esp_system.h"
 #include "esp_event.h"
 #include "esp_event_loop.h"
+#include "nvs.h"
 
 #include "lwip/err.h"
 #include "lwip/sockets.h"
@@ -135,6 +136,8 @@ uint32_t pwm_count = 0;
 float last_width[NUM_CHANNELS];
 bool pwm_stopped = false;
 
+#define DEAD_BAND 50
+
 // Stop motors.  For ESC, send the low stick value instead of 0.
 void pwm_shutdown(void)
 {
@@ -181,11 +184,61 @@ void pwm_output(uint16_t *wd)
 static bool cmp_mid(uint16_t wd[], int n)
 {
     for (int i = 0; i < n; i++) {
-        if (wd[i] > MID_WIDTH) {
+        if (wd[i] > MID_WIDTH + DEAD_BAND) {
             return true;
         }
     }
     return false;
+}
+
+extern SemaphoreHandle_t nvs_sem;
+
+static int trim_role, trim_pitch, trim_yaw;
+static int trim[NUM_MOTORS];
+
+static void setup_trim(void)
+{
+    nvs_handle storage_handle;
+    esp_err_t err;
+
+    xSemaphoreTake(nvs_sem, portMAX_DELAY);
+    err = nvs_open("storage", NVS_READONLY, &storage_handle);
+    if (err != ESP_OK) {
+        printf("NVS can't be opened (%d)\n", err);
+    } else {
+        // Try to look preset offsets
+        err = nvs_get_i32(storage_handle, "trim_role", &trim_role);
+        if (err == ESP_OK) {
+            if (trim_role > 25)
+                trim_role = 25;
+            else if (trim_role < -25)
+                trim_role = 25;
+            printf("trim_role = %d\n", trim_role);
+        }
+        err = nvs_get_i32(storage_handle, "trim_pitch", &trim_pitch);
+        if (err == ESP_OK) {
+            if (trim_pitch > 25)
+                trim_pitch = 25;
+            else if (trim_pitch < -25)
+                trim_pitch = 25;
+            printf("trim_pitch = %d\n", trim_pitch);
+        }
+        err = nvs_get_i32(storage_handle, "trim_yaw", &trim_yaw);
+        if (err == ESP_OK) {
+            if (trim_yaw > 25)
+                trim_yaw = 25;
+            else if (trim_yaw < -25)
+                trim_yaw = 25;
+            printf("trim_yaw = %d\n", trim_yaw);
+        }
+        nvs_close(storage_handle);
+    }
+    xSemaphoreGive(nvs_sem);
+
+    trim[0] = -trim_role - trim_pitch - trim_yaw;
+    trim[1] =  trim_role + trim_pitch - trim_yaw;
+    trim[2] =  trim_role - trim_pitch + trim_yaw;
+    trim[3] = -trim_role + trim_pitch + trim_yaw;
 }
 
 // RCOut RGB LED channels
@@ -218,6 +271,8 @@ void pwm_task(void *arg)
     // wait 6 sec for normal esc/motor start up
     printf("wait 6 sec for normal esc/motor start up\n");
     vTaskDelay(6000 / portTICK_PERIOD_MS);
+
+    setup_trim();
 
     struct B3packet pkt;
     TickType_t last_time = xTaskGetTickCount();
@@ -288,6 +343,9 @@ void pwm_task(void *arg)
         uint16_t wd[NUM_CHANNELS];
         for (int i = 0; i < NUM_CHANNELS; i++) {
             uint16_t width = ube16_val(pkt.data, i);
+            if (width > LO_WIDTH + DEAD_BAND) {
+                width += trim[i];
+            }
             wd[i] = width;
             last_width[i] = (float)(width);
         }

@@ -35,8 +35,8 @@
 // Experimental
 #define FIXUP_INS_OFFSET
 
-#define ROTATION_YAW	180
-//#define  ROTATION_YAW	90
+//#define ROTATION_YAW	180
+#define  ROTATION_YAW	90
 
 
 // MPU9250
@@ -546,30 +546,9 @@ static void fixup_ins_offsets(void)
 
 extern int sockfd;
 extern SemaphoreHandle_t send_sem;
+extern xQueueHandle pkt_queue;
+extern int pkt_queue_error;
 extern xQueueHandle ins_evt_queue;
-
-static xQueueHandle pkt_queue;
-#define PKT_QSIZE 32
-
-void imu_pkt_task(void *arg)
-{
-    while (sockfd < 0) {
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-
-    pkt_queue = xQueueCreate(PKT_QSIZE, sizeof(struct B3packet));
-
-    struct B3packet pkt;
-    while(1) {
-        if (xQueueReceive(pkt_queue, &pkt, portMAX_DELAY) != pdTRUE)
-            continue;
-        xSemaphoreTake(send_sem, portMAX_DELAY);
-        int n = send(sockfd, &pkt, sizeof(pkt), 0);
-        if (n < 0) {
-        }
-        xSemaphoreGive(send_sem);
-    }
-}
 
 #if 1
 static int maybe_inverted;
@@ -759,7 +738,8 @@ void imu_task(void *arg)
             pkt.head = B3HEADER;
             pkt.tos = TOS_IMU;
             if (xQueueSend(pkt_queue, &pkt, 0) != pdTRUE) {
-                printf("fail to queue IMU packet\n");
+                //printf("fail to queue IMU packet\n");
+                ++pkt_queue_error;
             }
             if ((count++ % 10) == 0) {
                 try_compass = true;
@@ -811,7 +791,8 @@ void imu_task(void *arg)
                 memcpy(&pkt.data[4], uy.bytes, sizeof(uy));
                 memcpy(&pkt.data[8], uz.bytes, sizeof(uz));
                 if (xQueueSend(pkt_queue, &pkt, 0) != pdTRUE) {
-                    printf("fail to queue MAG packet\n");
+                    //printf("fail to queue MAG packet\n");
+                    ++pkt_queue_error;
                 }
             } else if (count >= FILTER_CONVERGE_COUNT) {
                 // COOKED or ZHINANCHE
@@ -820,7 +801,8 @@ void imu_task(void *arg)
                 memcpy(&pkt.data[4], uy.bytes, sizeof(uy));
                 memcpy(&pkt.data[8], uz.bytes, sizeof(uz));
                 if (xQueueSend(pkt_queue, &pkt, 0) != pdTRUE) {
-                    printf("fail to queue MAG packet\n");
+                    //printf("fail to queue MAG packet\n");
+                    ++pkt_queue_error;
                 }
             }
             beta = (count++ < FILTER_CONVERGE_COUNT) ? 16.0f : 0.2f;

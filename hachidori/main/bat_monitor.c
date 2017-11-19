@@ -80,6 +80,7 @@ static float sma_filter(float x, float mem[], size_t n)
 static float vmem[N_SMA], cmem[N_SMA];
 
 extern SemaphoreHandle_t send_sem;
+extern xQueueHandle pkt_queue;
 
 float vbat_open, cbat_open;
 bool low_battery = false;
@@ -207,10 +208,9 @@ void bat_task(void *arg)
         // Send it
         pkt.head = B3HEADER;
         pkt.tos = TOS_BAT;
-        xSemaphoreTake(send_sem, portMAX_DELAY);
-        int n = send(sockfd, &pkt, sizeof(pkt), 0);
-        if (n < 0) {
+
+        if (xQueueSend(pkt_queue, &pkt, 0) != pdTRUE) {
+            printf("fail to queue Bat monitor packet\n");
         }
-        xSemaphoreGive(send_sem);
     }
 }
