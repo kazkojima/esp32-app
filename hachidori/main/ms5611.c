@@ -196,6 +196,7 @@ static void calculate(float f_D1, float f_D2, uint8_t *pp, uint8_t *tp)
     temp.f = (TEMP + 2000) * 0.01f;
     memcpy(tp, temp.bytes, sizeof(temp));
     memcpy(pp, press.bytes, sizeof(press));
+    //printf("MS5611: %f %f\n", press.f, temp.f);
 }
 
 extern int sockfd;
@@ -226,6 +227,7 @@ void baro2_task(void* arg)
     uint8_t next_state;
     uint8_t next_cmd;
     bool discard_next = false;
+    uint32_t susp_pcount = 0, susp_tcount = 0;
 
     struct B3packet pkt;
     TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -264,18 +266,46 @@ void baro2_task(void* arg)
             // a failed read can mean the next returned value will be
             // corrupt, we must discard it
             discard_next = true;
+            //printf("MS5611: zero adc_val\n");
             continue;
         }
 
         if (discard_next) {
             discard_next = false;
             state = next_state;
+            //printf("MS5611: discard adc_val\n");
             continue;
         }
 
+        // Apply averaging filter. Skip suspicious adc values after
+        // stabilized.
         if (state == 0) {
+            if (d2_count >= 16
+                && abs(s_D2 / d2_count - adc_val) > 0x4000) {
+                state = next_state;
+                //printf("MS5611: suspicious pres. adc_val\n");
+                if (++susp_pcount > 4) {
+                    // reset pres. filter
+                    s_D2 = 0;
+                    d2_count = 0;
+                }
+                continue;
+            }
+            susp_pcount = 0;
             filter(&s_D2, adc_val, &d2_count, 32);
         } else {
+            if (d1_count >= 64
+                && abs(s_D1 / d1_count - adc_val) > 0x8000) {
+                state = next_state;
+                //printf("MS5611: suspicious temp. adc_val\n");
+                if (++susp_tcount > 4) {
+                    // reset temp. filter
+                    s_D1 = 0;
+                    d1_count = 0;
+                }
+                continue;
+            }
+            susp_tcount = 0;
             filter(&s_D1, adc_val, &d1_count, 128);
         }
         state = next_state;
