@@ -35,9 +35,8 @@
 // Experimental
 #define FIXUP_INS_OFFSET
 
-//#define ROTATION_YAW	180
-#define  ROTATION_YAW	90
-
+// Yaw difference of head and MAG north
+#define  ROTATION_YAW	CONFIG_ROTATION_YAW
 
 // MPU9250
 #define MPU9250_ID      0x71
@@ -805,9 +804,14 @@ void imu_task(void *arg)
                     ++pkt_queue_error;
                 }
             }
-            beta = (count++ < FILTER_CONVERGE_COUNT) ? 16.0f : 0.2f;
-            if (compass_mode != ZHINANCHE)
+            if (count++ < FILTER_CONVERGE_COUNT) {
+                beta = 16.0f;
                 MadgwickAHRSupdate(gx, gy, gz, ax, ay, az, mx, my, mz);
+            } else {
+                beta = 0.2f;
+                if (compass_mode != ZHINANCHE)
+                    MadgwickAHRSupdate(gx, gy, gz, ax, ay, az, mx, my, mz);
+            }
             KFACCupdate(ax, ay, az);
             attitude_adjust_compute();
             compass_update();

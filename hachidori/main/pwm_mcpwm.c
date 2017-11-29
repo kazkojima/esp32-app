@@ -35,7 +35,7 @@
 #include "soc/mcpwm_reg.h"
 #include "soc/mcpwm_struct.h"
 
-#if defined(MOTOR_ORDER_CW)
+#if CONFIG_MOTOR_ORDER_CW
 #define MCPWM_IO_0   (13)
 #define MCPWM_IO_1   (14)
 #define MCPWM_IO_2   (27)

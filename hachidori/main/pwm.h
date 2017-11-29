@@ -1,10 +1,14 @@
 // pwm definitions and globals
 
 // Define when ESC is used
-//#define USE_ESC
-#undef USE_ESC
-//#define USE_MCPWM
-#define USE_LEDC
+#if CONFIG_ESC
+# define USE_ESC
+#endif
+#if CONFIG_ESC_MCPWM
+# define USE_MCPWM
+#else
+# define USE_LEDC
+#endif
 
 #if !defined(USE_MCPWM) && !defined(USE_LEDC)
 #error "no PWM module selected"

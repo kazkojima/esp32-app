@@ -185,6 +185,12 @@ static void udp_task(void *arg)
     }
 }
 
+#if CONFIG_BARO_MS5611
+#define BARO_MS5611 1
+#else
+#define BARO_MS5611 0
+#endif
+
 spi_device_handle_t spi_baro, spi_a, spi_m;
 
 #define PIN_NUM_MISO 19
@@ -405,7 +411,7 @@ void app_main(void)
     xTaskCreate(udp_task, "udp_task", 2048, NULL, 4, NULL);
     xTaskCreate(imu_task, "imu_task", 2048, NULL, 10, NULL);
     xTaskCreate(pkt_task, "pkt_task", 2048, NULL, 9, NULL);
-    if (CONFIG_BARO_MS5611)
+    if (BARO_MS5611)
         xTaskCreate(baro2_task, "baro2_task", 2048, NULL, 9, NULL);
     else
         xTaskCreate(baro_task, "baro_task", 2048, NULL, 9, NULL);
