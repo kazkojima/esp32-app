@@ -7,3 +7,5 @@ PROJECT_NAME := hachidori
 
 include $(IDF_PATH)/make/project.mk
 
+paramlist:
+	grep '//@' main/*.[ch] | ./pext.py > main/paramlist

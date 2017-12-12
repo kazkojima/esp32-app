@@ -117,7 +117,7 @@
 
 #define GRAVITY_MSS     9.80665f
 
-#define FILTER_CONVERGE_COUNT 2000
+#define FILTER_CONVERGE_COUNT CONFIG_FILTER_CONVERGE_COUNT
 
 // accelerometer scaling for 16g range
 #define MPU9250_ACCEL_SCALE_1G    (GRAVITY_MSS / 2048.0f)
@@ -431,62 +431,92 @@ static void fixup_ins_offsets(void)
         printf("NVS can't be opened (%d)\n", err);
     } else {
         // Try to look preset offsets
+        //@ (storage (category IMU) (sym %xg_offset) (type float)
+        //@  (help 'gyro X offset'))
         err = nvs_get_i32(storage_handle, "%xg_offset", &xg_offs.i);
         if (err == ESP_OK) {
             printf("%%xg_offset = %f\n", xg_offs.f);
         }
+        //@ (storage (category IMU) (sym %yg_offset) (type float)
+        //@  (help 'gyro Y offset'))
         err = nvs_get_i32(storage_handle, "%yg_offset", &yg_offs.i);
         if (err == ESP_OK) {
             printf("%%yg_offset = %f\n", yg_offs.f);
         }
+        //@ (storage (category IMU) (sym %zg_offset) (type float)
+        //@  (help 'gyro Z offset'))
         err = nvs_get_i32(storage_handle, "%zg_offset", &zg_offs.i);
         if (err == ESP_OK) {
             printf("%%zg_offset = %f\n", zg_offs.f);
         }
+        //@ (storage (category IMU) (sym %xg_offset_tc) (type float)
+        //@  (help 'gyro X offset temperature coefficient'))
         err = nvs_get_i32(storage_handle, "%xg_offset_tc", &xg_offs_tc.i);
         if (err == ESP_OK) {
             printf("%%xg_offset_tc = %f\n", xg_offs_tc.f);
         }
+        //@ (storage (category IMU) (sym %yg_offset_tc) (type float)
+        //@  (help 'gyro Y offset temperature coefficient'))
         err = nvs_get_i32(storage_handle, "%yg_offset_tc", &yg_offs_tc.i);
         if (err == ESP_OK) {
             printf("%%yg_offset_tc = %f\n", yg_offs_tc.f);
         }
+        //@ (storage (category IMU) (sym %zg_offset_tc) (type float)
+        //@  (help 'gyro Z offset temperature coefficient'))
         err = nvs_get_i32(storage_handle, "%zg_offset_tc", &zg_offs_tc.i);
         if (err == ESP_OK) {
             printf("%%zg_offset_tc = %f\n", zg_offs_tc.f);
         }
+        //@ (storage (category IMU) (sym %xa_offset) (type float)
+        //@  (help 'accelerometer X offset'))
         err = nvs_get_i32(storage_handle, "%xa_offset", &xa_offs.i);
         if (err == ESP_OK) {
             printf("%%xa_offset = %f\n", xa_offs.f);
         }
+        //@ (storage (category IMU) (sym %ya_offset) (type float)
+        //@  (help 'accelerometer Y offset'))
         err = nvs_get_i32(storage_handle, "%ya_offset", &ya_offs.i);
         if (err == ESP_OK) {
             printf("%%ya_offset = %f\n", ya_offs.f);
         }
+        //@ (storage (category IMU) (sym %za_offset) (type float)
+        //@  (help 'accelerometer Z offset'))
         err = nvs_get_i32(storage_handle, "%za_offset", &za_offs.i);
         if (err == ESP_OK) {
             printf("%%za_offset = %f\n", za_offs.f);
         }
+        //@ (storage (category IMU) (sym %xa_offset_tc) (type float)
+        //@  (help 'accelerometer X offset temperature coefficient'))
         err = nvs_get_i32(storage_handle, "%xa_offset_tc", &xa_offs_tc.i);
         if (err == ESP_OK) {
             printf("%%xa_offset_tc = %f\n", xa_offs_tc.f);
         }
+        //@ (storage (category IMU) (sym %ya_offset_tc) (type float)
+        //@  (help 'accelerometer Y offset temperature coefficient'))
         err = nvs_get_i32(storage_handle, "%ya_offset_tc", &ya_offs_tc.i);
         if (err == ESP_OK) {
             printf("%%ya_offset_tc = %f\n", ya_offs_tc.f);
         }
+        //@ (storage (category IMU) (sym %za_offset_tc) (type float)
+        //@  (help 'accelerometer Z offset temperature coefficient'))
         err = nvs_get_i32(storage_handle, "%za_offset_tc", &za_offs_tc.i);
         if (err == ESP_OK) {
             printf("%%za_offset_tc = %f\n", za_offs_tc.f);
         }
+        //@ (storage (category IMU) (sym %xm_offset) (type float)
+        //@  (help 'magnetometer X offset'))
         err = nvs_get_i32(storage_handle, "%xm_offset", &xm_offs.i);
         if (err == ESP_OK) {
             printf("%%xm_offset = %f\n", xm_offs.f);
         }
+        //@ (storage (category IMU) (sym %ym_offset) (type float)
+        //@  (help 'magnetometer Y offset'))
         err = nvs_get_i32(storage_handle, "%ym_offset", &ym_offs.i);
         if (err == ESP_OK) {
             printf("%%ym_offset = %f\n", ym_offs.f);
         }
+        //@ (storage (category IMU) (sym %zm_offset) (type float)
+        //@  (help 'magnetometer Z offset'))
         err = nvs_get_i32(storage_handle, "%zm_offset", &zm_offs.i);
         if (err == ESP_OK) {
             printf("%%zm_offset = %f\n", zm_offs.f);

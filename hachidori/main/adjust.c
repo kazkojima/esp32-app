@@ -24,7 +24,7 @@
 #define BCOUNT 10
 
 // Assume that attitude_adjust_compute is invoked in every 10ms
-#define FILTER_STABILIZE_ACOUNT 300
+#define FILTER_STABILIZE_ACOUNT (CONFIG_FILTER_CONVERGE_COUNT/10+100)
 
 static uint32_t acount;
 static float dp[4], dd[4];
@@ -48,6 +48,8 @@ void attitude_adjust_init(void)
     if (err != ESP_OK) {
         printf("NVS can't be opened (%d)\n", err);
     } else {
+        //@ (storage (category control) (sym %control_gain) (type float)
+        //@  (help 'PD control gain'))
         err = nvs_get_i32(storage_handle, "%control_gain", &gain.i);
         if (err == ESP_OK) {
             printf("%%control_gain = %f\n", gain.f);
@@ -78,7 +80,7 @@ void attitude_adjust_compute(void)
     //printf ("rup: %7.5f hup: %7.5f\n", rup, hup);
 
     // Estimate yaw change.  Again very rough approximation only
-    // when the frame is almost holizontal.  Perhaps we require
+    // when the frame is almost horizontal.  Perhaps we require
     // more presice values for the better estimation.
     if (set_target_yaw || acount == FILTER_STABILIZE_ACOUNT) {
             target_yaw_re = q1;

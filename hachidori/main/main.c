@@ -150,6 +150,8 @@ static void udp_task(void *arg)
                 if (err == ESP_OK)
                     err = nvs_commit(storage_handle);
             } else if (pbuf[B3SIZE-1] == 3) {
+                //@ (storage (category special) (sym #reset) (type void)
+                //@  (help 'restart'))
                 if (0 == strncmp((const char*)pbuf, "#reset", 6)) {
                     err = ESP_OK;
                     request_restart = true;

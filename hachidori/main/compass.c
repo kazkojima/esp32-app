@@ -13,7 +13,7 @@
 volatile float compass_x, compass_y, compass_z;
 enum compass_mode compass_mode;
 
-static float m_hol = DEFAULT_MAG_HOL, m_vert = DEFAULT_MAG_VERT;
+static float m_hor = DEFAULT_MAG_HOL, m_vert = DEFAULT_MAG_VERT;
 
 extern SemaphoreHandle_t nvs_sem;
 
@@ -29,6 +29,8 @@ void compass_init(void)
     if (err != ESP_OK) {
         printf("NVS can't be opened (%d)\n", err);
     } else {
+        //@ (storage (category commpass) (sym compass_mode) (type int)
+        //@  (help 'compass mode, 0:raw 1:cooked 2:zhinanche'))
         err = nvs_get_i32(storage_handle, "compass_mode", &mode);
         if (err == ESP_OK) {
             if (mode < 0 || mode > ZHINANCHE) {
@@ -41,15 +43,19 @@ void compass_init(void)
         }
         printf("compass_mode = %d\n", mode);
         if (compass_mode != RAW) {
+            //@ (storage (category commpass) (sym %mag_vertical) (type float)
+            //@  (help 'vertical component of magnetic field'))
             err = nvs_get_i32(storage_handle, "%mag_vertical", &m_v.i);
             if (err == ESP_OK) {
                 printf("%%mag_vertical = %f\n", m_v.f);
                 m_vert = m_v.f;
             }
-            err = nvs_get_i32(storage_handle, "%mag_holizontal", &m_h.i);
+            //@ (storage (category commpass) (sym %mag_horizontal) (type float)
+            //@  (help 'horizontal component of magnetic field'))
+            err = nvs_get_i32(storage_handle, "%mag_horizontal", &m_h.i);
             if (err == ESP_OK) {
-                printf("%%mag_holizontal = %f\n", m_h.f);
-                m_hol = m_h.f;
+                printf("%%mag_horizontal = %f\n", m_h.f);
+                m_hor = m_h.f;
             }
         }
     }
@@ -75,12 +81,12 @@ void compass_update(void)
     if (compass_mode == RAW)
         return;
 
-    // Very rough estimation of holizontal heading.  Reasonable only
-    // when the attitude is almost holizontal.
+    // Very rough estimation of horizontal heading.  Reasonable only
+    // when the attitude is almost horizontal.
     float a = 0.0f, b, c, d = -m_vert;
     float b2 = q1*q1 - q2*q2, c2 = 2*q1*q2;
-    c = -(b2*b2 - c2*c2) * m_hol;
-    b = 2*b2*c2 * m_hol;
+    c = -(b2*b2 - c2*c2) * m_hor;
+    b = 2*b2*c2 * m_hor;
     //printf("mx: %f my: %f mz: %f -> ", b, c, d);
     qconjugate2(&a, &b, &c, &d);
     //printf("MX: %7.3f MY: %7.3f MZ: %7.3f\n", c, b, d);

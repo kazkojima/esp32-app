@@ -286,6 +286,8 @@ static void setup_trim(void)
         printf("NVS can't be opened (%d)\n", err);
     } else {
         // Try to look preset offsets
+        //@ (storage (category PWM) (sym trim_role) (type int)
+        //@  (help 'PWM trim for role'))
         err = nvs_get_i32(storage_handle, "trim_role", &trim_role);
         if (err == ESP_OK) {
             if (trim_role > 25)
@@ -294,6 +296,8 @@ static void setup_trim(void)
                 trim_role = 25;
             printf("trim_role = %d\n", trim_role);
         }
+        //@ (storage (category PWM) (sym trim_pitch) (type int)
+        //@  (help 'PWM trim for pitch'))
         err = nvs_get_i32(storage_handle, "trim_pitch", &trim_pitch);
         if (err == ESP_OK) {
             if (trim_pitch > 25)
@@ -302,6 +306,8 @@ static void setup_trim(void)
                 trim_pitch = 25;
             printf("trim_pitch = %d\n", trim_pitch);
         }
+        //@ (storage (category PWM) (sym trim_yaw) (type int)
+        //@  (help 'PWM trim for yaw'))
         err = nvs_get_i32(storage_handle, "trim_yaw", &trim_yaw);
         if (err == ESP_OK) {
             if (trim_yaw > 25)

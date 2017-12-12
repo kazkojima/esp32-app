@@ -95,4 +95,10 @@ config GPIO_LED_BLUE
     help
 	GPIO number used for BLUE color element.
 
+config FILTER_CONVERGE_COUNT
+    int "MadgwickAHRS filter calibration time in ms"
+    default 6000
+    help
+        Time(ms) for MadgwickAHRS filter calibration.
+
 endmenu
