@@ -272,7 +272,7 @@ static bool cmp_mid(uint16_t wd[], int n)
 
 extern SemaphoreHandle_t nvs_sem;
 
-static int trim_role, trim_pitch, trim_yaw;
+static int trim_roll, trim_pitch, trim_yaw;
 static int trim[NUM_MOTORS];
 
 static void setup_trim(void)
@@ -286,15 +286,15 @@ static void setup_trim(void)
         printf("NVS can't be opened (%d)\n", err);
     } else {
         // Try to look preset offsets
-        //@ (storage (category PWM) (sym trim_role) (type int)
-        //@  (help 'PWM trim for role'))
-        err = nvs_get_i32(storage_handle, "trim_role", &trim_role);
+        //@ (storage (category PWM) (sym trim_roll) (type int)
+        //@  (help 'PWM trim for roll'))
+        err = nvs_get_i32(storage_handle, "trim_roll", &trim_roll);
         if (err == ESP_OK) {
-            if (trim_role > 25)
-                trim_role = 25;
-            else if (trim_role < -25)
-                trim_role = 25;
-            printf("trim_role = %d\n", trim_role);
+            if (trim_roll > 25)
+                trim_roll = 25;
+            else if (trim_roll < -25)
+                trim_roll = 25;
+            printf("trim_roll = %d\n", trim_roll);
         }
         //@ (storage (category PWM) (sym trim_pitch) (type int)
         //@  (help 'PWM trim for pitch'))
@@ -320,10 +320,10 @@ static void setup_trim(void)
     }
     xSemaphoreGive(nvs_sem);
 
-    trim[0] = -trim_role - trim_pitch - trim_yaw;
-    trim[1] =  trim_role + trim_pitch - trim_yaw;
-    trim[2] =  trim_role - trim_pitch + trim_yaw;
-    trim[3] = -trim_role + trim_pitch + trim_yaw;
+    trim[0] = -trim_roll - trim_pitch - trim_yaw;
+    trim[1] =  trim_roll + trim_pitch - trim_yaw;
+    trim[2] =  trim_roll - trim_pitch + trim_yaw;
+    trim[3] = -trim_roll + trim_pitch + trim_yaw;
 }
 
 // RCOut RGB LED channels
