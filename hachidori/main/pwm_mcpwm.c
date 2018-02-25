@@ -212,7 +212,7 @@ static void setup_trim(void)
             if (trim_roll > 25)
                 trim_roll = 25;
             else if (trim_roll < -25)
-                trim_roll = 25;
+                trim_roll = -25;
             printf("trim_roll = %d\n", trim_roll);
         }
         err = nvs_get_i32(storage_handle, "trim_pitch", &trim_pitch);
@@ -220,7 +220,7 @@ static void setup_trim(void)
             if (trim_pitch > 25)
                 trim_pitch = 25;
             else if (trim_pitch < -25)
-                trim_pitch = 25;
+                trim_pitch = -25;
             printf("trim_pitch = %d\n", trim_pitch);
         }
         err = nvs_get_i32(storage_handle, "trim_yaw", &trim_yaw);
@@ -228,7 +228,7 @@ static void setup_trim(void)
             if (trim_yaw > 25)
                 trim_yaw = 25;
             else if (trim_yaw < -25)
-                trim_yaw = 25;
+                trim_yaw = -25;
             printf("trim_yaw = %d\n", trim_yaw);
         }
         nvs_close(storage_handle);
